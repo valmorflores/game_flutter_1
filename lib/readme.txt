@@ -4,6 +4,6 @@
 - todo: firula fase
 - todo: morrer pelo numero de vezes que clica na tela
 - todo: quando muda nivel (muda algo - cor por exemplo)
-- todo: depois que passa de 5mil, 10mil temporizador;
+- todo: depois que passa de 5mil, 10mil temporizador (time level);
 - todo: grafico de captura
 - todo: 

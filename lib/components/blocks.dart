@@ -20,12 +20,27 @@ class Blocks {
    Blocks( {this.gameController, this.left, this.top, this.width, this.height, this.blockColor, this.isSpoiled = true } )
    {
       double barWidth = gameController.screenSize.width * 1;
-      this.isDead = false;
+      Offset maximus;
+      double sizewidth, sizeheight;
+      this.isDead = false;     
+      maximus = this.gameController.arena.addblock(top: this.top, left:this.left, height: this.height, width: this.width );
+      sizewidth = maximus.dx;
+      sizeheight = maximus.dy;
+      if ( this.isSpoiled ){
+         if ( sizewidth > 50 ){
+           sizewidth = 50;
+         }
+         if ( sizeheight > 50 ){
+           sizeheight = 50;
+         }
+      }     
       blockRect = Rect.fromLTWH(
-          left, top, width, height );
-      // Incorpora demais blocos
+          left, top, sizewidth, sizeheight );
+      this.gameController.killif();
+      this.gameController.arena.printarena();
       incorporaGrupo();
       somaocupacao();
+      
    }
 
    void render( Canvas c ){
@@ -83,34 +98,7 @@ class Blocks {
    }
 
    void somaocupacao(){
-      double areaocupada = this.width * this.height;
-      double areasobreposta = 0;
-      double lin, col;
-      Offset posicao;
-      bool lnext;
-      String clincol = '';
-      
-      // todo: Area de sobreposicao, analisando cada um dos blocks
-      // processo um pouco lento, pensar outra forma
-      for ( lin = 0; lin <= this.height; lin++ ){
-          for ( col = 0; col <= this.width-1; col++ ){
-               lnext = false;
-               this.gameController.blocks.forEach((f){
-                  if ( !lnext ){
-                      if ( this.blockRect.hashCode != f.blockRect.hashCode ){
-                          posicao = Offset( this.left + col, this.top + lin );
-                          if (f.blockRect.contains(posicao)){
-                            areasobreposta ++;
-                            lnext = true;
-                          }
-                       }
-                   }
-              });
-          }
-      }
-      
-      areaocupada = areaocupada - areasobreposta;
-      this.gameController.ocupacao += areaocupada;
+      this.gameController.ocupacao=this.gameController.arena.areaocupada();
    }
 
 }

@@ -2,7 +2,10 @@ import 'dart:ui';
 
 import 'package:teste/components/enemy.dart';
 import 'package:teste/controlls/gameController.dart';
+import 'package:teste/controlls/gameDesafios.dart';
+import 'package:teste/models/enum_desafios.dart';
 import 'package:teste/models/enum_enemy.dart';
+import 'package:teste/models/enum_fails.dart';
 import 'package:teste/models/enum_state.dart';
 
 class GameLevel {
@@ -11,9 +14,13 @@ class GameLevel {
    int enemies = 1;
    int highscore = 0;
    int difficulty = 30;
-
+   double percentual = 50;
+   
    GameController gameController;
-   GameLevel({this.gameController});
+   GameLevel({this.gameController, this.percentual}){
+
+
+   }
 
    void up(){
       this.level++;
@@ -39,17 +46,7 @@ class GameLevel {
       Offset posicao;
       areatotal = this.gameController.screenSize.width * 
            this.gameController.screenSize.height;
-
-      /*
-      for ( lin =0; lin <= this.gameController.screenSize.height-1; lin++ ){
-        for ( col = 0; col <= this.gameController.screenSize.width-1; col++ ){
-            posicao = Offset( col, lin );
-            this.gameController.blocks.forEach((f) => areaocupada += (f.blockRect.contains(posicao))?1:0); 
-        }
-      }
-      */
-      // metodo 2
-      //this.gameController.blocks.forEach((f) => areaocupada += (f.blockRect.width * f.blockRect.height)); 
+     
       areaocupada = this.gameController.ocupacao;
       if ( ( ( areaocupada / areatotal ) * 100 ) < 1.0 ) {
         return 0;
@@ -104,13 +101,62 @@ class GameLevel {
    }
 
    void extras(){
-      print( 'Extras para fase: ' + this.gameController.level.toString() );
-      if ( this.gameController.level >= 100 ){         
-         this.gameController.enemies.add(
-             Enemy(gameController: this.gameController, x: 50, y: 50, difficulty: 10, enemyType: EnemyType.chefao ));
-         this.gameController.enemies.add(
-             Enemy(gameController: this.gameController, x: 150, y: 150, difficulty: 25, enemyType: EnemyType.chefao ));
+      print( 'Extras para fase: ' + this.gameController.level.toString() );   
+      if ( this.gameController.level == 3 ){
+         this.gameController.gameLevel.percentual = 70;
+      }
+      else if ( this.gameController.level >= 5 ){
+         this.gameController.gameLevel.percentual = 70;
+         this.gameController.enemies.add( new Enemy(gameController: this.gameController, x: 50, y: 50, difficulty: 20, enemyType: EnemyType.chefao ));
+         this.gameController.enemies.add( new Enemy(gameController: this.gameController, x: 50, y: 50, difficulty: 30, enemyType: EnemyType.gerente ));
+         this.gameController.enemies.add( new Enemy(gameController: this.gameController, x: 50, y: 50, difficulty: 50, enemyType: EnemyType.gangster ));
+         this.gameController.enemies.add( new Enemy(gameController: this.gameController, x: 50, y: 50, difficulty: 40, enemyType: EnemyType.gangster ));        
+         this.gameController.desafios.add( new DesafiosItem(
+            name: 'Gerente', 
+            enemytype: EnemyType.gerente,
+            desafio: DesafiosGame.capturar, quantidade: 1, ));
+         this.gameController.desafios.add( new DesafiosItem(
+            name: 'Gangster', 
+            enemytype: EnemyType.gangster,
+            desafio: DesafiosGame.capturar, quantidade: 3, ) );
+        this.gameController.desafios.add( new DesafiosItem(
+            name: 'Chefao', 
+            enemytype: EnemyType.chefao,
+            desafio: DesafiosGame.capturar, quantidade: 1, ) );
+      }
+      else if ( this.gameController.level >= 100 ){         
+         this.gameController.enemies.add( new Enemy(gameController: this.gameController, x: 50, y: 50, difficulty: 10, enemyType: EnemyType.chefao ));
+         this.gameController.enemies.add( new Enemy(gameController: this.gameController, x: 150, y: 150, difficulty: 25, enemyType: EnemyType.chefao ));
       }
    }
+
+
+   FailsGame fail()
+   {
+       FailsGame fail = FailsGame.none;
+       int captura;
+       this.gameController.desafios.items.forEach((f){
+           if ( f.desafio == DesafiosGame.capturar ){
+              captura = 0;
+              this.gameController.enemies.forEach((enemy){
+                 if ( enemy.enemyType == f.enemytype ){
+                    ++captura;
+                 }
+              });
+              if ( captura < f.quantidade ){
+                fail = FailsGame.enemykilled;
+                fail = ( f.enemytype == EnemyType.chefao )?FailsGame.bosskilled:fail;
+                fail = ( f.enemytype == EnemyType.gerente )?FailsGame.enemykilled:fail;
+                fail = ( f.enemytype == EnemyType.gangster )?FailsGame.enemykilled:fail;
+              }
+           }
+       });
+       //fail = FailsGame.none;
+       if (this.gameController.player.currentHealt<=0){
+           fail = FailsGame.health;
+       }
+       return fail;
+   }
+
 
 }

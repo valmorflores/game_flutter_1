@@ -7,8 +7,10 @@ import 'package:flame/util.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:teste/arena.dart';
 import 'package:teste/components/blocks.dart';
 import 'package:teste/components/enemy.dart';
+import 'package:teste/components/enemy_text.dart';
 import 'package:teste/components/health_bar.dart';
 import 'package:teste/components/level_counting.dart';
 import 'package:teste/components/level_gameover.dart';
@@ -17,23 +19,28 @@ import 'package:teste/components/mark.dart';
 import 'package:teste/components/ocupacao_text.dart';
 import 'package:teste/components/player.dart';
 import 'package:teste/components/score_text.dart';
+import 'package:teste/controlls/gameDesafios.dart';
 import 'package:teste/controlls/gameLevels.dart';
 import 'package:teste/models/enum_coordinates.dart';
 import 'package:teste/models/enum_enemy.dart';
+import 'package:teste/models/enum_fails.dart';
 import 'package:teste/models/enum_mark.dart';
 import 'package:teste/models/enum_state.dart';
 
 class GameController extends Game {
   Size screenSize;
+  Arena arena;
   double tileSize = 10;
   Player player;
   List<Enemy> enemies = []; // = new Enemy(5);
   List<Blocks> blocks = [];
   List<Mark> marks = [];
-  int inimigos = 100;
-  int level = 100;
+  int inimigos = 0;
+  int level = 10;
   int score = 0;
+  int inAnalise = 0;
   double ocupacao = 0;
+  bool firstTap = false;
   HealthBar healthBar;
   ScoreText scoreText;
   LevelWaitText levelWaitText;
@@ -43,6 +50,8 @@ class GameController extends Game {
   Offset hdragposition;
   StateGame state;
   OcupacaoText ocupacaoText;
+  EnemyText enemyText;
+  Desafios desafios;
   
   GameLevel gameLevel;
 
@@ -54,17 +63,22 @@ class GameController extends Game {
     int diff;
     bool emSerie = false;
     resize(await Flame.util.initialDimensions());
-    Flame.util.fullScreen();
-    player = Player(this);
+    Flame.util.fullScreen();    
+    player = Player(this);   
+    arena = Arena(gameController: this);
+    desafios = Desafios(gameController: this, items: [] );
     gameLevel = GameLevel(gameController: this);
     healthBar = HealthBar(gameController: this);
     scoreText = ScoreText(gameController: this);    
     ocupacaoText = OcupacaoText(gameController: this);
+    enemyText = EnemyText(gameController: this);
     levelWaitText = LevelWaitText(gameController: this);
     levelCounting = LevelCounting(gameController: this);
     levelGameOverText = LevelGameOverText(gameController: this);
+    firstTap = false;
     this.inimigos = this.inimigos + 1;
     this.ocupacao = 0;
+    this.gameLevel.percentual = 50;
     state = StateGame.menu;
 
     // Criação inimigos
@@ -73,7 +87,7 @@ class GameController extends Game {
     Random randomico2 = new Random(256);
     Random randomico3 = new Random(50);
     emSerie = randomico1.nextInt(1)==1?false:true;
-    for (var i = 0; i < inimigos; i++) {
+    for (var i = 0; i < this.inimigos; i++) {
       randomico2 = Random(256 * i);
       x = randomico1.nextDouble() * 1000;
       y = randomico2.nextDouble() * 1000;
@@ -84,10 +98,11 @@ class GameController extends Game {
       diff = randomico3.nextInt(100);
       diff = diff < 50 ? 50 : diff;
       print('Enemies=' + x.toString() + '-' + y.toString());
-      enemies.add(Enemy(gameController: this, x: x, y: y, difficulty: diff));
+      this.enemies.add(Enemy(gameController: this, x: x, y: y, difficulty: diff));
     }
 
-    gameLevel.extras();
+    this.gameLevel.extras();
+    this.arena.printarena();
 
   }
 
@@ -115,10 +130,11 @@ class GameController extends Game {
         marks.forEach((element) => !element.isDead ? element.render(c) : null);
         // enemies aqui <------  
         healthBar.render(c);        
-        gameLevel.render(c);
+        gameLevel.render(c);       
     }
+    enemyText.render(c);
     scoreText.render(c);
-    ocupacaoText.render(c);
+    ocupacaoText.render(c);    
   }
 
   void update(double t) {
@@ -132,39 +148,32 @@ class GameController extends Game {
     healthBar.update(t);
     gameLevel.update(t);
     levelWaitText.update(t);    
-    //if ( state == StateGame.counting ){      
-       //?
-       
-    //}
     levelCounting.update(t);
     levelGameOverText.update(t);
     ocupacaoText.update(t);
-    if (gameLevel.ocupacao() > 90) {
-      this.level = this.level +1;
+    enemyText.update(t);
+    if (this.gameLevel.ocupacao() >= this.gameLevel.percentual) {
+      //this.level = this.level +1;
       gameLevel.finalcount();
       if ( this.enemiesCount() <= 1 ){
          gameLevel.up();
          gameLevel.startlevel();
          gameLevel.start();
-      }
-      print( 'Level count: ' + gameLevel.count().toString() );
-      print( 'Score: ' + this.score.toString() );
+      }      
     }
-    else if (player.currentHealt<=0){
-      //this.score = 0;
+    else if ( this.gameLevel.fail() != FailsGame.none)
+    {
       state = StateGame.gameover;
       gameLevel.finalgameover();
-      //gameLevel.up();
-      //gameLevel.startlevel();
-      //gameLevel.start();
-      print( 'Level count: ' + gameLevel.count().toString() );
-      print( 'Score: ' + this.score.toString() );
-    } 
+    }
+    //else if (player.currentHealt<=0){
+    //  state = StateGame.gameover;
+    //  gameLevel.finalgameover();
+    //}
   }
 
   void resize(Size size) {
-    screenSize = size;
-    //tileSize = ( screenSize / 30 );
+    screenSize = size;     
   }
 
   void onTapDown(TapDownDetails d) {
@@ -173,15 +182,14 @@ class GameController extends Game {
        state = StateGame.playing;
     }
     else if ( state == StateGame.gameover ) {
-       sleep(const Duration(seconds:1));
+       //sleep(const Duration(seconds:1));
        state = StateGame.playing;
-       gameLevel.resetall();
-       this.level = this.level -1;
+       gameLevel.resetall();       
        this.inimigos = this.inimigos -1;
        this.initialize();
     }
     else
-    {
+    {      
       Random randnumero = new Random();
       double size = ( 50 + randnumero.nextInt(100) / 2 );
       blocks.add(Blocks(
@@ -193,6 +201,7 @@ class GameController extends Game {
           blockColor: Colors.lightBlueAccent,
           isSpoiled: true));
       //print('tap' + d.globalPosition.dx.toString());
+      firstTap = true;
     }
   }
 
@@ -408,6 +417,11 @@ class GameController extends Game {
     {
        return Coordinates.left;
     }
+  }
+
+  void killif(){
+     this.inAnalise = this.enemiesCount()*2;
+     this.enemies.forEach((f) => f.killif());    
   }
   
 }
