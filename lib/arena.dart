@@ -1,6 +1,4 @@
-
 import 'dart:ui';
-
 import 'package:teste/controlls/gameController.dart';
 
 class Arena {

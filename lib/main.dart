@@ -6,14 +6,16 @@ import 'package:flutter/scheduler.dart';
 import 'package:teste/controlls/gameController.dart';
 import 'package:teste/models/enum_game.dart';
 import 'package:flame/util.dart';
+import 'package:teste/models/theme_model.dart';
 import 'home_prototipo.dart';
 
 // Se quiser rodar protitipo (rode:)
 //void main() => runApp(MyApp());
 GameController gameController = GameController();
+
 void main(){
    Util flameUtil = Util();
-   runApp((gameController.widget));
+   runApp( gameController.widget );
 
    VerticalDragGestureRecognizer vdrag = VerticalDragGestureRecognizer();
    vdrag.onStart = gameController.onVerticalDragStart;

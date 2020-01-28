@@ -1,4 +1,3 @@
-
 import 'dart:math';
 import 'dart:ui';
 
@@ -53,11 +52,16 @@ class Mark {
       if (direcaoMark == MarkDirection.vertical) {
         // Enemy(direita ou esquerda)?
         if (!isDead) {
-          //if (this.gameController.enemies[0].enemyRect.left<=this.markRect.left ){ 
-          if (this.gameController.quadranteMaisImportanteVertical(this.markRect.left)==Coordinates.left)
-          { 
+          //if (this.gameController.enemies[0].enemyRect.left<=this.markRect.left ){
+          if (this
+                  .gameController
+                  .quadranteMaisImportanteVertical(this.markRect.left) ==
+              Coordinates.left) {
             print('povo ta na esquerda');
-            // Block a direita
+            this.gameController.eliminaporcoordenadaLTRB( this.markRect.left, 
+                 0, gameController.screenSize.width,
+                  gameController.screenSize.height );
+            // Block a direita           
             this.gameController.blocks.add(Blocks(
                 gameController: this.gameController,
                 top: 0,
@@ -67,11 +71,12 @@ class Mark {
                 blockColor: Colors.pinkAccent,
                 isSpoiled: false));
             this.isDead = true;
-          }
-          else
-          {
-
+          } else {
             // Block a esquerda
+            this.gameController.eliminaporcoordenadaLTRB( 0, 
+                 0, 
+                 this.markRect.left,
+                 this.markRect.height );
             this.gameController.blocks.add(Blocks(
                 gameController: this.gameController,
                 top: 0,
@@ -86,29 +91,46 @@ class Mark {
       }
       if (direcaoMark == MarkDirection.horizontal) {
         // Enemy(acima ou abaixo)?
-        if (!isDead) { 
+        if (!isDead) {
           // Inimigo acima, bloco abaixo
-          if ( this.gameController.quadranteMaisImportanteHorizontal(this.markRect.top)==Coordinates.top){
-            this.gameController.blocks.add(Blocks(
-              gameController: this.gameController,
-              top: this.markRect.top,
-              left: 0,
-              width: this.gameController.screenSize.width,
-              height: this.gameController.screenSize.height - this.markRect.top,
-              blockColor: Colors.blueAccent,
-              isSpoiled: false));
-          this.isDead = true;
-          }else{
-            this.gameController.blocks.add(Blocks(
-              gameController: this.gameController,
-              top: 0,
-              left: 0,
-              width: this.gameController.screenSize.width,
-              height: this.markRect.top,
-              blockColor: Colors.blueAccent,
-              isSpoiled: false));
-          this.isDead = true;
+          if (this
+                  .gameController
+                  .quadranteMaisImportanteHorizontal(this.markRect.top) ==
+              Coordinates.top) {
 
+            this.gameController.eliminaporcoordenadaLTRB( 
+                  0, 
+                 this.markRect.top, 
+                 this.gameController.screenSize.width,
+                 this.gameController.screenSize.height );
+
+            this.gameController.blocks.add(Blocks(
+                gameController: this.gameController,
+                top: this.markRect.top,
+                left: 0,
+                width: this.gameController.screenSize.width,
+                height:
+                    this.gameController.screenSize.height - this.markRect.top,
+                blockColor: Colors.blueAccent,
+                isSpoiled: false));
+            this.isDead = true;
+          } else {
+            
+            this.gameController.eliminaporcoordenadaLTRB( 
+                 0, 
+                 0, 
+                 this.gameController.screenSize.width,
+                 this.markRect.top );
+            
+            this.gameController.blocks.add(Blocks(
+                gameController: this.gameController,
+                top: 0,
+                left: 0,
+                width: this.gameController.screenSize.width,
+                height: this.markRect.top,
+                blockColor: Colors.blueAccent,
+                isSpoiled: false));
+            this.isDead = true;
           }
         }
       }
@@ -123,8 +145,7 @@ class Mark {
             markRect.top - (1 * velocidade),
             markRect.width,
             markRect.height + (2 * velocidade));
-      }
-      else if (direcaoMark == MarkDirection.horizontal) {
+      } else if (direcaoMark == MarkDirection.horizontal) {
         toDirection1 = Offset(0, -10);
         toDirection2 = Offset(0, 10);
         Offset stepToPlayer =

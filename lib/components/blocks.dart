@@ -12,20 +12,29 @@ class Blocks {
    Rect blockRect;
    bool isDead;
    bool isSpoiled;
- 
+   bool isEnergy;
+   bool isSobreposto;
    Rect get qualBlock {
      return this.blockRect;
    }
 
-   Blocks( {this.gameController, this.left, this.top, this.width, this.height, this.blockColor, this.isSpoiled = true } )
+   Blocks( {this.gameController, this.left, this.top, this.width, this.height, this.blockColor, this.isSpoiled = true, isSobreposto = false } )
    {
       double barWidth = gameController.screenSize.width * 1;
       Offset maximus;
       double sizewidth, sizeheight;
       this.isDead = false;     
-      maximus = this.gameController.arena.addblock(top: this.top, left:this.left, height: this.height, width: this.width );
-      sizewidth = maximus.dx;
-      sizeheight = maximus.dy;
+      this.isEnergy = false;
+      if ( isSobreposto ){
+         sizewidth = width;
+         sizeheight = height;
+      }
+      else
+      {
+         maximus = this.gameController.arena.addblock(top: this.top, left:this.left, height: this.height, width: this.width );
+         sizewidth = maximus.dx;
+         sizeheight = maximus.dy;
+      }
       if ( this.isSpoiled ){
          if ( sizewidth > 50 ){
            sizewidth = 50;
@@ -34,12 +43,26 @@ class Blocks {
            sizeheight = 50;
          }
       }     
-      blockRect = Rect.fromLTWH(
-          left, top, sizewidth, sizeheight );
-      this.gameController.killif();
-      this.gameController.arena.printarena();
-      incorporaGrupo();
-      somaocupacao();
+        
+      if ( sizeheight > 0 && sizewidth > 0 ){
+          blockRect = Rect.fromLTWH(
+              left, top, sizewidth, sizeheight );
+          print( 'Novo Bloco:' + 'l:' + left.toString() + ',' +
+                            't:' + top.toString() + ',' + 
+                            'w:' + sizewidth.toString() + ',' +
+                            'h:' + sizeheight.toString() );
+                            
+          this.gameController.killif();
+          this.gameController.arena.printarena();
+          incorporaGrupo();
+          somaocupacao();    
+      }
+      else
+      {
+        blockRect = Rect.fromLTWH(
+              -1, -1, 1, 1 );
+        isDead = true;
+      }
       
    }
 
@@ -65,33 +88,36 @@ class Blocks {
          coordenada3 = Offset( r, t );
          coordenada4 = Offset( r, b );
          if (!f.isSpoiled ) {
-            print('block (not isSpoiled) normal ' + 't=' + t.toString() + ',' + 
+            /*print('block (not isSpoiled) normal ' + 't=' + t.toString() + ',' + 
                    'l=' + l.toString() + ',' + 
                    'b=' + b.toString() + ',' + 
                    'r=' + r.toString());
-
+            */
          }
          if ( f.isSpoiled ) {
             if ( this.blockRect.contains(coordenada1) || 
                  this.blockRect.contains(coordenada2) ||
                  this.blockRect.contains(coordenada3) || 
                  this.blockRect.contains(coordenada4) ){
+                f.isEnergy = this.isEnergy;
                 f.isSpoiled = false;
                 f.blockColor = this.blockColor;
-                print( '> Block: t=' + t.toString() + ',' + 
+                /*print( '> Block: t=' + t.toString() + ',' + 
                    'l=' + l.toString() + ',' + 
                    'b=' + b.toString() + ',' + 
                    'r=' + r.toString()
                   );
+                  */
                 //f.incorporaGrupo();
             }
             else
             {
-               print( 'Block nao contem: t=' + t.toString() + ',' + 
+               /*print( 'Block nao contem: t=' + t.toString() + ',' + 
                    'l=' + l.toString() + ',' + 
                    'b=' + b.toString() + ',' + 
                    'r=' + r.toString()
                   );
+                */
             }
          }
      });

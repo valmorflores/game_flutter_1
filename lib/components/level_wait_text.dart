@@ -30,7 +30,7 @@ void render(Canvas c){
 
 void update(double t){
    if ((painter.text??'')!=this.gameController.score.toString()){
-     painter.text = TextSpan( text: this.gameController.gameLevel.count().toString(),
+     painter.text = TextSpan( text: this.gameController.level.toString(),
      style: TextStyle( color: Colors.white,
      fontSize: 120.0,
      ),

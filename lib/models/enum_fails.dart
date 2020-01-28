@@ -3,7 +3,9 @@ enum FailsGame {
     timeout,
     health,
     enemykilled,
+    managerkilled,
     bosskilled,
+    bigbosskilled,
     refemkilled,
     victimkilled,
 }

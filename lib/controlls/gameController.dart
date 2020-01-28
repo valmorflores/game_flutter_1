@@ -9,36 +9,48 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:teste/arena.dart';
 import 'package:teste/components/blocks.dart';
+import 'package:teste/components/desafio_status.dart';
 import 'package:teste/components/enemy.dart';
 import 'package:teste/components/enemy_text.dart';
 import 'package:teste/components/health_bar.dart';
 import 'package:teste/components/level_counting.dart';
 import 'package:teste/components/level_gameover.dart';
+import 'package:teste/components/level_percent.dart';
 import 'package:teste/components/level_wait_text.dart';
 import 'package:teste/components/mark.dart';
 import 'package:teste/components/ocupacao_text.dart';
 import 'package:teste/components/player.dart';
 import 'package:teste/components/score_text.dart';
+import 'package:teste/components/tools.dart';
+import 'package:teste/components/tools/block_energy.dart';
 import 'package:teste/controlls/gameDesafios.dart';
 import 'package:teste/controlls/gameLevels.dart';
+import 'package:teste/main.dart';
 import 'package:teste/models/enum_coordinates.dart';
 import 'package:teste/models/enum_enemy.dart';
 import 'package:teste/models/enum_fails.dart';
 import 'package:teste/models/enum_mark.dart';
 import 'package:teste/models/enum_state.dart';
+import 'package:teste/models/enum_tools.dart';
+import 'package:teste/screens/view_video_get_live.dart';
 
 class GameController extends Game {
   Size screenSize;
+  BuildContext context;  
+  ToolsType toolsType;
   Arena arena;
   double tileSize = 10;
+  double toolSize = 50;
   Player player;
   List<Enemy> enemies = []; // = new Enemy(5);
   List<Blocks> blocks = [];
   List<Mark> marks = [];
   int inimigos = 0;
-  int level = 10;
+  int level = 1;
   int score = 0;
   int inAnalise = 0;
+  int lives = 0;
+  int livedown = 3;
   double ocupacao = 0;
   bool firstTap = false;
   HealthBar healthBar;
@@ -50,17 +62,21 @@ class GameController extends Game {
   Offset hdragposition;
   StateGame state;
   OcupacaoText ocupacaoText;
+  DesafioStatus desafioStatus;
   EnemyText enemyText;
   Desafios desafios;
+  Tools tools;
+  LevelPercent levelPercent;
   
   GameLevel gameLevel;
 
-  GameController() {
+  GameController({this.context}) {
     initialize();
   }
 
   void initialize() async {
     int diff;
+    
     bool emSerie = false;
     resize(await Flame.util.initialDimensions());
     Flame.util.fullScreen();    
@@ -70,17 +86,21 @@ class GameController extends Game {
     gameLevel = GameLevel(gameController: this);
     healthBar = HealthBar(gameController: this);
     scoreText = ScoreText(gameController: this);    
-    ocupacaoText = OcupacaoText(gameController: this);
+    ocupacaoText = OcupacaoText(gameController: this);   
     enemyText = EnemyText(gameController: this);
     levelWaitText = LevelWaitText(gameController: this);
     levelCounting = LevelCounting(gameController: this);
     levelGameOverText = LevelGameOverText(gameController: this);
+    tools = Tools(gameController: this);
+    tools.items.clear();
+    toolsType = ToolsType.none;
     firstTap = false;
     this.inimigos = this.inimigos + 1;
     this.ocupacao = 0;
     this.gameLevel.percentual = 50;
     state = StateGame.menu;
-
+    levelPercent = LevelPercent(gameController: this);
+    this.livedown = 1;
     // Criação inimigos
     double x, y;
     Random randomico1 = new Random(256);
@@ -97,23 +117,24 @@ class GameController extends Game {
       }
       diff = randomico3.nextInt(100);
       diff = diff < 50 ? 50 : diff;
-      print('Enemies=' + x.toString() + '-' + y.toString());
+      //print('Enemies=' + x.toString() + '-' + y.toString());
       this.enemies.add(Enemy(gameController: this, x: x, y: y, difficulty: diff));
     }
 
     this.gameLevel.extras();
     this.arena.printarena();
-
+    desafioStatus = DesafioStatus(gameController: this);
   }
 
   void render(Canvas c) {
     Rect background = Rect.fromLTWH(0, 0, screenSize.width, screenSize.height);
     Paint backgroundPaint = Paint()
-      ..color = Colors.amber; //Color.fromRGBO(255,255,255,1);
+      ..color = Colors.blueGrey; //Color.fromRGBO(255,255,255,1);
     c.drawRect(background, backgroundPaint);
     player.render(c);
     //enemies.map((eni) => eni.render(c));
     enemies.forEach((element) => element.render(c));
+    
     if ( state == StateGame.menu ){
        levelWaitText.render(c);
     }
@@ -121,20 +142,27 @@ class GameController extends Game {
        blocks.forEach((element) => element.render(c));
        levelGameOverText.render(c);
     }
+    
     else if ( state == StateGame.counting ){
        levelCounting.render(c);
     }
     else if ( state == StateGame.playing )
     {
+        
         blocks.forEach((element) => element.render(c));
+        levelPercent.render(c);
         marks.forEach((element) => !element.isDead ? element.render(c) : null);
         // enemies aqui <------  
         healthBar.render(c);        
         gameLevel.render(c);       
+        tools.render(c);
+        desafioStatus.render(c);
+        
     }
-    enemyText.render(c);
-    scoreText.render(c);
+    state!=StateGame.gameover?scoreText.render(c):null;  
+    state!=StateGame.gameover?enemyText.render(c):null;
     ocupacaoText.render(c);    
+    
   }
 
   void update(double t) {
@@ -152,7 +180,9 @@ class GameController extends Game {
     levelGameOverText.update(t);
     ocupacaoText.update(t);
     enemyText.update(t);
-    if (this.gameLevel.ocupacao() >= this.gameLevel.percentual) {
+    desafioStatus.update(t);
+    levelPercent.update(t);
+    if (this.gameLevel.ocupacao().toInt() >= this.gameLevel.percentual.toInt()) {
       //this.level = this.level +1;
       gameLevel.finalcount();
       if ( this.enemiesCount() <= 1 ){
@@ -163,13 +193,28 @@ class GameController extends Game {
     }
     else if ( this.gameLevel.fail() != FailsGame.none)
     {
+      this.lives -= this.livedown;
+      this.livedown = 0;
       state = StateGame.gameover;
       gameLevel.finalgameover();
     }
+    tools.update(t);
     //else if (player.currentHealt<=0){
     //  state = StateGame.gameover;
     //  gameLevel.finalgameover();
     //}
+
+    
+  }
+
+  rodavideo(){
+    if ( state == StateGame.getlivebyvideo ){
+       this.state = StateGame.runningVideo;
+       Navigator.push( this.context,
+                MaterialPageRoute(builder: (context) => ViewVideoGetLive( parametro: '',)));
+       //new ViewVideoGetLive( parametro: '',);  
+
+    }
   }
 
   void resize(Size size) {
@@ -177,31 +222,101 @@ class GameController extends Game {
   }
 
   void onTapDown(TapDownDetails d) {
-    // todo: melhorar o randomico
+    
     if ( state == StateGame.menu ) {
        state = StateGame.playing;
     }
-    else if ( state == StateGame.gameover ) {
-       //sleep(const Duration(seconds:1));
-       state = StateGame.playing;
-       gameLevel.resetall();       
-       this.inimigos = this.inimigos -1;
-       this.initialize();
+    else if ( state == StateGame.getlivebyvideo ){
+      if ( this.lives > 0 ){
+        state = StateGame.playing;
+        gameLevel.resetall();       
+        this.inimigos = this.inimigos -1;
+        this.initialize();
+      }
+      else
+      {
+        rodavideo();//state == StateGame.runningVideo;
+      }
     }
-    else
+    else if ( state == StateGame.gameover ) {
+       if ( d.globalPosition.dy < 70 ){
+          if ( this.lives <= 0 ){
+            // Abre área de sugestão de vídeo
+            /*Navigator.push(
+                null,
+                MaterialPageRoute(builder: (context) => ViewVideoGetLive()),
+            );*/
+            print( 'Sem vidas');
+            state = StateGame.getlivebyvideo;
+            print( 'Rodar video');
+            rodavideo();
+
+          }
+          else
+          {
+            print( 'Com vidas');
+            state = StateGame.playing;
+            gameLevel.resetall();       
+            this.inimigos = this.inimigos -1;
+            this.initialize();
+          }
+       }
+    }
+    else if ( state == StateGame.playing )  
     {      
-      Random randnumero = new Random();
-      double size = ( 50 + randnumero.nextInt(100) / 2 );
-      blocks.add(Blocks(
-          gameController: this,
-          top: d.globalPosition.dy - (size / 2),
-          left: d.globalPosition.dx - (size / 2),
-          width: size,
-          height: size,
-          blockColor: Colors.lightBlueAccent,
-          isSpoiled: true));
-      //print('tap' + d.globalPosition.dx.toString());
-      firstTap = true;
+      if ( d.globalPosition.dy > this.screenSize.height - this.tools.height ){
+          // Pegar um item do menu
+          //print( 'Menu acionado (haha)');
+          /*
+          if ( toolsType == ToolsType.none ){
+             toolsType = ToolsType.add_energyblock;
+          }
+          else
+          {
+             toolsType = ToolsType.none;
+          }*/    
+          //if ( this.toolsType == ToolsType.none ){      
+          this.toolsType = this.tools.onTapDown(d);
+          //}
+          //else
+          //{
+             //this.toolsType = ToolsType.none;
+          //}
+          print( this.toolsType.toString());
+      }
+      else
+      {
+          // Padrão, colocar blocos
+          if ( this.toolsType == ToolsType.none || this.toolsType == ToolsType.add_normalblock ){
+              // todo: melhorar o randomico
+              Random randnumero = new Random();
+              double size = ( 50 + randnumero.nextInt(100) / 2 );
+              if ( size > 100 ){
+                size = 20;
+              }
+              this.blocks.add(Blocks(
+                  gameController: this,
+                  top: d.globalPosition.dy - (size / 2),
+                  left: d.globalPosition.dx - (size / 2),
+                  width: size,
+                  height: size,
+                  blockColor: Colors.greenAccent, //.lightBlueAccent,
+                  isSpoiled: true));
+              //print('tap' + d.globalPosition.dx.toString());
+          }
+          else if ( this.toolsType == ToolsType.add_energyblock ){
+              if ( this.tools.getQuantidade( ToolsType.add_energyblock ) > 0 ){
+                double size = toolSize;
+                this.blocks.add(BlockEnergy(
+                    gameController: this,
+                    top: d.globalPosition.dy - (size / 2),
+                    left: d.globalPosition.dx - (size / 2),
+                    width:50, height: 50));
+                this.tools.decrement( ToolsType.add_energyblock );  
+              }
+          }
+          firstTap = true;
+        }
     }
   }
 
@@ -221,12 +336,20 @@ class GameController extends Game {
   void onVerticalDragEnd(DragEndDetails d) {
     if ( state == StateGame.playing ){
       if ( this.vdragposition != null ){
-        marks.add(Mark(
-            gameController: this,
-            top: this.vdragposition.dy,
-            left: this.vdragposition.dx,
-            width: 10,
-            height: 150));
+
+        if ( this.tools.getQuantidade( ToolsType.status_cutblock ) > 0 ){
+        
+          marks.add(Mark(
+                  gameController: this,
+                  top: this.vdragposition.dy,
+                  left: this.vdragposition.dx,
+                  width: 10,
+                  height: 150));
+
+          this.tools.decrement( ToolsType.status_cutblock );
+
+        }
+         
         //blocks.add( Blocks(gameController: this, top: this.vdragposition.dy, left: this.vdragposition.dx, width: 150, height: 150, blockColor: Colors.pinkAccent));
         print('drag vertical.detail.end.velocity = ' + d.velocity.toString());
       }
@@ -243,13 +366,19 @@ class GameController extends Game {
   void onHorizontalDragEnd(DragEndDetails d) {
     if ( state == StateGame.playing ){
         if ( this.hdragposition != null ){
-          marks.add(Mark(
-            gameController: this,
-            top: this.hdragposition.dy,
-            left: this.hdragposition.dx,
-            width: 10,
-            height: 10,
-            direction: MarkDirection.horizontal));
+          if ( this.tools.getQuantidade( ToolsType.status_cutblock ) > 0 ){
+            marks.add(Mark(
+              gameController: this,
+              top: this.hdragposition.dy,
+              left: this.hdragposition.dx,
+              width: 10,
+              height: 10,
+              direction: MarkDirection.horizontal));
+            this.tools.decrement( ToolsType.status_cutblock );
+          }
+         
+          print( 'Qtd=' + this.tools.getQuantidade( ToolsType.status_cutblock ).toString());
+          
         print('drag horizontal.end.velocity = ' + d.velocity.toString());
       }
     }
@@ -266,6 +395,16 @@ class GameController extends Game {
   void emininateOneEnemy(){
       this.enemies[0].goPrision();
       this.enemies[0].isDead = true;
+  }
+
+  int enemyCount( EnemyType enemyTypeNow ){
+    int count=0;
+    this.enemies.forEach((f){
+       if (f.enemyType == enemyTypeNow ){
+          ++count;
+       }
+    });
+    return count;
   }
 
   void sendtoJailOneEnemy(){
@@ -288,6 +427,21 @@ class GameController extends Game {
     this.enemies.forEach((f)=>++i);
     return i;
   }
+
+  void eliminaporcoordenadaLTRB( double left, top, right, bottom ){
+     this.enemies.forEach((f){
+       
+       if (f.enemyRect.left >= left &&
+           f.enemyRect.top >= top &&
+           f.enemyRect.right <= right &&
+           f.enemyRect.bottom <= bottom ){
+         f.isDead = true;
+         print( 'morte por coordenada');
+      }
+
+     });
+  }
+
 
   Coordinates quadranteMenosImportante(){
     double topLeft = 0, topRight = 0, bottom = 0;

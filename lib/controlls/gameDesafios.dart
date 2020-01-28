@@ -12,6 +12,17 @@ class Desafios {
    void add( DesafiosItem item ){
      this.items.add( item );
    }
+   
+   int countbyenemytype(EnemyType enemyTypehere ){
+     int count=0;
+     this.items.forEach((f){
+        if ( f.enemytype == enemyTypehere ){
+          count = f.quantidade;
+        }
+     });
+     return count;
+   }
+
 }
 
 class DesafiosItem {

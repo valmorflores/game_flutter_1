@@ -4,4 +4,6 @@ enum StateGame {
     counting,
     pause,
     gameover,
+    getlivebyvideo,
+    runningVideo,
 }
